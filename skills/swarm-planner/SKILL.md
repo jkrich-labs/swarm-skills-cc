@@ -19,7 +19,7 @@ Create implementation plans with explicit task dependencies optimized for parall
 ## Core Principles
 
 1. **Explore Codebase**: Investigate architecture, patterns, existing implementations, dependencies, and frameworks in use
-2. **Fresh Documentation First**: Use Context7 for ANY external library, framework, or API before planning tasks
+2. **Fresh Documentation First**: Use WebSearch for ANY external library, framework, or API before planning tasks
 3. **Ask Questions**: Clarify ambiguities — seek clarification on scope, constraints, or priorities at any point
 4. **Explicit Dependencies**: Every task declares what it depends on, enabling maximum parallelization
 5. **Atomic Tasks**: Each task is independently executable by a single agent in an isolated worktree
@@ -46,7 +46,7 @@ Use the `Explore` subagent type for broad codebase exploration, or `Glob`/`Grep`
 
 **Documentation retrieval (REQUIRED for external dependencies):**
 
-Use Context7 MCP to fetch current docs for any libraries/frameworks/APIs that are or will be used in the project. This ensures version-accurate APIs, correct parameters, and current best practices.
+Use WebSearch to research current docs for any libraries/frameworks/APIs that are or will be used in the project. This ensures version-accurate APIs, correct parameters, and current best practices.
 
 ### 3. STOP and Request User Input
 
@@ -261,6 +261,6 @@ T2 ──┴── T4 ──┘
 - Tasks in the same wave MUST NOT share files
 - Root tasks (no dependencies) execute in parallel immediately
 - Do NOT implement — only create the plan
-- Always use Context7 for external dependencies before finalizing tasks
+- Always use WebSearch for external dependencies before finalizing tasks
 - Always ask questions where ambiguity exists
 - The plan must contain enough context for an agent with zero prior knowledge to implement each task

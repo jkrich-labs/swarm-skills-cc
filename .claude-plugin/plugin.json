@@ -1,7 +1,7 @@
 {
   "name": "swarm-skills",
   "description": "Dependency-aware parallel planning and execution for Claude Code. Create plans with /swarm-skills:swarm-planner, execute with /swarm-skills:swarm-executor.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "John Richardson",
     "email": "hi@jkri.ch"
