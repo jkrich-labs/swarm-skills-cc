@@ -10,6 +10,8 @@ The plugin is distributed via the Claude Code marketplace as `swarm-skills@swarm
 
 ## Repository Structure
 
+- `CLAUDE.md` — LLM instructions for working in this repo
+- `README.md` — User-facing documentation (GitHub)
 - `.claude-plugin/plugin.json` — Plugin identity, version, and metadata
 - `.claude-plugin/marketplace.json` — Marketplace listing configuration
 - `skills/swarm-planner/SKILL.md` — Planner skill: creates dependency-aware plans with wave tables and file isolation verification
@@ -24,6 +26,8 @@ The plugin is distributed via the Claude Code marketplace as `swarm-skills@swarm
 Key invariants enforced across both skills:
 - Tasks in the same wave must not touch the same files (file isolation) — the plan file is the known exception, handled by Tier 1 conflict resolution
 - Merge conflicts are auto-resolved using tiered strategies (plan file → additive → subagent resolver → user escalation)
+- Task status lifecycle: `pending` → `in_progress` (at dispatch) → `completed` / `failed` / `blocked`
+- Native tasks are scoped to their plan via a slug prefix in subjects (e.g., `[auth-system-swarm] T1:`)
 - Worktrees are cleaned up immediately after each wave — none survive past their wave
 - Neither skill uses `EnterPlanMode`/`ExitPlanMode`
 - Subagents never push — only commit

@@ -41,18 +41,18 @@ Orchestrates parallel execution of swarm plans. Launches subagents in dependency
 
 ## Workflow
 
-1. `/swarm-skills:swarm-planner` — research, ask questions, produce dependency-aware plan
-2. `/swarm-skills:swarm-executor <plan-path>` — execute plan in parallel waves with worktree isolation
+1. `/swarm-skills:swarm-planner` — explores the codebase, asks clarifying questions, produces a dependency-aware plan with wave tables and file isolation verification
+2. `/swarm-skills:swarm-executor <plan-path>` — executes the plan in parallel waves using worktree-isolated subagents, auto-resolves merge conflicts, and tracks progress via native tasks
 
 ## Key Features
 
 - **Dependency-aware plans** with `depends_on` arrays and wave tables
 - **File isolation verification** — tasks in the same wave cannot touch the same files
 - **Worktree isolation** — each parallel task runs in its own git worktree
+- **Tiered merge conflict resolution** — plan file conflicts, additive conflicts, and code conflicts are auto-resolved in escalating tiers; user escalation is the last resort
+- **Resume capability** — interrupted executions pick up from `.tasks.json` state and `in_progress` tracking
+- **Plan-scoped native tasks** — tasks are prefixed with a plan slug to prevent cross-plan collisions on resume
 - **Strict worktree cleanup** — no worktree survives past its wave
-- **Resume capability** — interrupted executions pick up from `.tasks.json`
-- **Native task integration** — `TaskCreate`/`TaskUpdate` for CLI-visible progress
-- **Merge conflict escalation** — never auto-resolves, always asks the user
 
 ## License
 
