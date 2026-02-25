@@ -71,6 +71,7 @@ Structure the plan with explicit task dependencies. Critical rules:
 - If two tasks need to modify the same file, one MUST depend on the other
 - Shared files = forced serialization. Design tasks to minimize shared files.
 - When unavoidable, document WHY the dependency exists
+- **Exception**: The plan file itself is always shared (subagents update their own task status). This is expected and handled by the executor's Tier 1 conflict resolution.
 
 ### 5. Save Plan
 
@@ -86,8 +87,8 @@ Save to `docs/plans/YYYY-MM-DD-<topic>-swarm.md.tasks.json` alongside the plan:
 {
   "planPath": "docs/plans/YYYY-MM-DD-<topic>-swarm.md",
   "tasks": [
-    {"id": "T1", "subject": "Task title", "status": "pending", "dependsOn": []},
-    {"id": "T2", "subject": "Task title", "status": "pending", "dependsOn": ["T1"]}
+    {"id": "T1", "subject": "Task title", "status": "pending", "depends_on": []},
+    {"id": "T2", "subject": "Task title", "status": "pending", "depends_on": ["T1"]}
   ],
   "waves": [
     {"wave": 1, "tasks": ["T1", "T3"]},
@@ -106,11 +107,11 @@ ToolSearch: "select:TaskUpdate"
 ToolSearch: "select:TaskList"
 ```
 
-For each task in the plan, create a native task. **Track the mapping between plan IDs (T1, T2...) and the native task IDs returned by TaskCreate** — you need this mapping for setting dependencies.
+For each task in the plan, create a native task. Derive a **plan slug** from the filename (e.g., `2026-02-25-auth-system-swarm.md` → `auth-system-swarm`) and use it as a subject prefix to scope tasks to this plan. **Track the mapping between plan IDs (T1, T2...) and the native task IDs returned by TaskCreate** — you need this mapping for setting dependencies.
 
 ```
 TaskCreate:
-  subject: "T1: [Task Name]"
+  subject: "[auth-system-swarm] T1: [Task Name]"
   description: |
     [Full task content — files, description, validation, acceptance criteria]
   activeForm: "Implementing [Task Name]"
@@ -154,7 +155,7 @@ Context: [brief context about the task]
 If the subagent provides actionable feedback:
 1. Revise the plan file
 2. Regenerate the `.tasks.json` persistence file to match
-3. Update native tasks: use `TaskUpdate` to modify descriptions/subjects for existing tasks. If tasks were added or removed, delete stale tasks and create new ones as needed.
+3. Update native tasks: use `TaskUpdate` to modify descriptions/subjects for existing tasks. If tasks were added or removed, mark stale tasks as `completed` with a note "canceled — removed from plan" via `TaskUpdate`, and create new ones as needed.
 4. Re-verify with `TaskList` before yielding
 
 ### 9. Yield to User

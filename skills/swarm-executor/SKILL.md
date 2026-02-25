@@ -20,6 +20,14 @@ Orchestrator for parallel plan execution. Parses swarm plan files, launches suba
 
 ## Process
 
+### Step 0: Preflight — Clean Stale Worktrees
+
+Before any execution, check for leftover worktrees from prior interrupted runs:
+```bash
+git worktree list
+```
+If stale worktrees from previous swarm executions are found, alert the user and offer to clean them up before proceeding. Do NOT begin execution with stale worktrees present.
+
 ### Step 1: Parse Request
 
 Extract from user input:
@@ -42,11 +50,11 @@ ToolSearch: "select:TaskList"
 1. Read the plan file fully
 2. Look for `.tasks.json` persistence file at `<plan-path>.tasks.json`
 3. Call `TaskList` to check for existing native tasks
-4. **Resume logic — match native tasks to this plan** by checking if task subjects contain the plan's task IDs (e.g., "T1:", "T2:"):
+4. **Resume logic — match native tasks to this plan** by deriving a plan slug from the filename (e.g., `2026-02-25-auth-system-swarm.md` → `auth-system-swarm`) and checking if task subjects start with `[<plan-slug>]` (e.g., `[auth-system-swarm] T1:`):
    - If `.tasks.json` exists AND no matching native tasks found: recreate native tasks from JSON using `TaskCreate`, restore `blockedBy` with `TaskUpdate`
    - If matching native tasks exist: verify they match the plan, resume from first `pending`/`in_progress` task
    - If neither: bootstrap from plan (Step 2b)
-5. If a task subset was requested, filter to only those IDs and their required dependencies
+5. If a task subset was requested, validate all requested IDs exist in the plan — STOP with an error and list valid IDs if any are unrecognized. Then filter to only those IDs and their required dependencies.
 6. Review the plan critically — raise concerns with the user before starting
 
 ### Step 2b: Bootstrap Tasks from Plan
@@ -62,10 +70,10 @@ If no persistence state exists:
 
 ### Step 3: Identify Current Wave
 
-1. Collect all tasks with status `pending`
+1. Collect all tasks with status `pending` or `in_progress` (stale from a prior interrupted run)
 2. A task is **unblocked** if every ID in its `depends_on` list has status `completed`
 3. All currently unblocked tasks form the current wave
-4. **Pre-flight check**: Verify no two tasks in this wave touch the same files. If they do, STOP and alert the user — the plan has a file isolation violation.
+4. **Pre-flight check**: Verify no two tasks in this wave touch the same files (the plan file is excluded — it is always shared and handled by Tier 1 conflict resolution). If non-plan files overlap, STOP and alert the user — the plan has a file isolation violation.
 
 ### Step 4: Launch Wave
 
@@ -76,6 +84,8 @@ For each unblocked task in the current wave, dispatch a subagent using the `Task
 - **All unblocked tasks in a single message** — this is how Claude Code achieves true parallelism
 
 **CRITICAL: Send ALL Task tool calls for the wave in ONE message.** Do not send them sequentially.
+
+After dispatching, immediately mark all wave tasks as `in_progress` in `.tasks.json` and native tasks (via `TaskUpdate`). This enables accurate resume if execution is interrupted mid-wave.
 
 #### Subagent Prompt Template
 
@@ -138,15 +148,15 @@ As each subagent returns:
 2. **If the subagent made changes:** The Task tool returns `worktree_path` and `worktree_branch` in its result when `isolation: "worktree"` was used and changes were committed.
    a. Merge the worktree branch into the working branch:
       ```bash
-      git merge <worktree-branch> --no-ff -m "swarm: merge T<id> - <task name>"
+      git merge "<worktree-branch>" --no-ff -m "swarm: merge T<id> - <task name>"
       ```
    b. **If merge conflict:** follow the **Tiered Conflict Resolution** process below.
    c. After successful merge (or successful conflict resolution), delete the worktree and branch immediately:
       ```bash
-      git worktree remove <worktree-path> --force
-      git branch -D <worktree-branch>
+      git worktree remove "<worktree-path>" --force
+      git branch -D "<worktree-branch>"
       ```
-3. **If the subagent made no changes** (worktree auto-cleaned by Task tool): note the failure or no-op
+3. **If the subagent made no changes** (worktree auto-cleaned by Task tool): mark the task as `failed` in all three state stores (plan, `.tasks.json`, native task) and block any downstream dependents. Log the reason (subagent returned no changes).
 4. **If the subagent reported a blocker**: mark task as blocked, log the reason
 
 **CLEANUP GUARANTEE:** After processing each subagent result, verify the worktree is gone:
@@ -157,13 +167,13 @@ If any stale worktrees remain from this wave, remove them immediately.
 
 #### Tiered Conflict Resolution
 
-When a merge produces conflicts, resolve them using escalating tiers. Log which tier was used for each file in the wave summary.
+When a merge produces conflicts, **process each conflicting file individually**. List conflicting files with `git diff --name-only --diff-filter=U` and apply the appropriate tier to each file. After all files are resolved, verify zero unmerged paths remain with `git diff --name-only --diff-filter=U` before continuing. Log which tier was used for each file in the wave summary.
 
-**Tier 1 — Plan file conflicts:**
-If the only conflicting file is the plan file (`docs/plans/*.md`):
-1. Accept the incoming version: `git checkout --theirs <plan-file>`
+**Tier 1 — Plan file:**
+If the plan file (`docs/plans/*.md`) is among the conflicting files:
+1. Accept the incoming version: `git checkout --theirs "<plan-file>"`
 2. Re-apply the already-merged task's status updates using Edit (each task edits its own `### T<id>:` section, so these are non-overlapping)
-3. `git add <plan-file>` and continue the merge
+3. `git add "<plan-file>"`
 
 **Tier 2 — Additive conflicts:**
 If a conflict region consists entirely of additions from both sides (no lines deleted or modified relative to the base), combine both additions:
@@ -173,6 +183,8 @@ If a conflict region consists entirely of additions from both sides (no lines de
 4. If not purely additive: fall through to Tier 3
 
 This covers import blocks, barrel exports (`export * from`), and config arrays where both agents appended entries.
+
+After combining, run validation commands for both tasks (if specified). If validation fails, restore the conflict with `git checkout --merge "<file>"` and fall through to Tier 3.
 
 **Tier 3 — Subagent resolver:**
 For code conflicts that aren't purely additive, spawn a resolver subagent:
@@ -237,7 +249,7 @@ After ALL subagents in the wave have returned and been merged:
    - Determine if downstream tasks are now blocked
 6. **Commit the plan file updates:**
    ```bash
-   git add docs/plans/<plan-file> docs/plans/<plan-file>.tasks.json
+   git add "<plan-path>" "<plan-path>.tasks.json"
    git commit -m "swarm: wave N complete — T<ids> done"
    ```
 
@@ -308,10 +320,6 @@ After presenting the summary, call `TaskList` to display the final native task s
 - Show what was attempted and what failed
 - List available task IDs from the plan
 - Ask user for clarification
-
-### Stale Worktrees
-- At the START of every execution, run `git worktree list` and check for stale worktrees from previous runs
-- If found: alert the user and offer to clean them up before proceeding
 
 ## Resume Capability
 

@@ -22,7 +22,7 @@ The plugin is distributed via the Claude Code marketplace as `swarm-skills@swarm
 2. **swarm-executor** reads a plan, identifies unblocked tasks, and dispatches them as parallel `Task` subagents with `isolation: "worktree"`. After each wave completes, it merges worktree branches, validates results, updates state, and launches the next wave.
 
 Key invariants enforced across both skills:
-- Tasks in the same wave must not touch the same files (file isolation)
+- Tasks in the same wave must not touch the same files (file isolation) — the plan file is the known exception, handled by Tier 1 conflict resolution
 - Merge conflicts are auto-resolved using tiered strategies (plan file → additive → subagent resolver → user escalation)
 - Worktrees are cleaned up immediately after each wave — none survive past their wave
 - Neither skill uses `EnterPlanMode`/`ExitPlanMode`
