@@ -1,17 +1,16 @@
 ---
 name: swarm-planner
 description: >
-  [EXPLICIT INVOCATION ONLY] Creates dependency-aware implementation plans optimized for
-  parallel multi-agent execution with worktree isolation. Standalone skill — invoke with /swarm-planner.
-metadata:
-  invocation: explicit-only
+  Creates dependency-aware implementation plans optimized for parallel multi-agent execution
+  with worktree isolation. Invoke with /swarm-skills:swarm-planner.
+disable-model-invocation: true
 ---
 
 # Swarm-Ready Planner
 
 Create implementation plans with explicit task dependencies optimized for parallel agent execution in Claude Code. Plans produced by this skill are executed by the `swarm-executor` skill.
 
-**Announce at start:** "I'm using the swarm-planner skill to create a dependency-aware parallel implementation plan."
+**Announce at start:** "I'm using the swarm-skills:swarm-planner skill to create a dependency-aware parallel implementation plan."
 
 ## CRITICAL CONSTRAINTS
 
@@ -165,8 +164,8 @@ Present the completed plan and tell the user:
 ```
 Plan saved to docs/plans/YYYY-MM-DD-<topic>-swarm.md
 
-To execute: /swarm-executor docs/plans/YYYY-MM-DD-<topic>-swarm.md
-To execute a subset: /swarm-executor docs/plans/YYYY-MM-DD-<topic>-swarm.md T1 T3 T5
+To execute: /swarm-skills:swarm-executor docs/plans/YYYY-MM-DD-<topic>-swarm.md
+To execute a subset: /swarm-skills:swarm-executor docs/plans/YYYY-MM-DD-<topic>-swarm.md T1 T3 T5
 ```
 
 ## Plan Template
@@ -174,7 +173,7 @@ To execute a subset: /swarm-executor docs/plans/YYYY-MM-DD-<topic>-swarm.md T1 T
 ````markdown
 # Swarm Plan: [Task Name]
 
-> **For Claude:** REQUIRED SUB-SKILL: Use swarm-executor to implement this plan.
+> **For Claude:** REQUIRED SUB-SKILL: Use swarm-skills:swarm-executor to implement this plan.
 
 **Generated**: [Date]
 **Goal**: [One sentence describing what this builds]

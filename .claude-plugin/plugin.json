@@ -1,0 +1,13 @@
+{
+  "name": "swarm-skills",
+  "description": "Dependency-aware parallel planning and execution for Claude Code. Create plans with /swarm-skills:swarm-planner, execute with /swarm-skills:swarm-executor.",
+  "version": "1.0.0",
+  "author": {
+    "name": "John Richardson",
+    "email": "hi@jkri.ch"
+  },
+  "homepage": "https://github.com/jkrich-labs/swarm-skills-cc",
+  "repository": "https://github.com/jkrich-labs/swarm-skills-cc",
+  "license": "MIT",
+  "keywords": ["parallel", "swarm", "planner", "executor", "worktree", "multi-agent"]
+}

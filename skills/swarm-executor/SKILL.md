@@ -1,17 +1,16 @@
 ---
 name: swarm-executor
 description: >
-  [EXPLICIT INVOCATION ONLY] Orchestrates parallel execution of swarm plans using dependency-ordered
-  waves with worktree-isolated subagents. Invoke with /swarm-executor <plan-path> [task-ids...].
-metadata:
-  invocation: explicit-only
+  Orchestrates parallel execution of swarm plans using dependency-ordered waves with
+  worktree-isolated subagents. Invoke with /swarm-skills:swarm-executor <plan-path> [task-ids...].
+disable-model-invocation: true
 ---
 
 # Swarm Executor
 
 Orchestrator for parallel plan execution. Parses swarm plan files, launches subagents in dependency-ordered waves using worktree isolation, validates after each wave, and repeats until all tasks complete.
 
-**Announce at start:** "I'm using the swarm-executor skill to execute this swarm plan in parallel waves."
+**Announce at start:** "I'm using the swarm-skills:swarm-executor skill to execute this swarm plan in parallel waves."
 
 ## CRITICAL CONSTRAINTS
 
@@ -231,7 +230,7 @@ After presenting the summary, call `TaskList` to display the final native task s
 ### Merge Conflicts
 - STOP immediately — do not auto-resolve
 - Show the conflict to the user
-- Let the user resolve, then resume with `/swarm-executor <plan-path>` (resume picks up from `.tasks.json`)
+- Let the user resolve, then resume with `/swarm-skills:swarm-executor <plan-path>` (resume picks up from `.tasks.json`)
 
 ### Subagent Failure
 - Mark task as `failed` in plan, JSON, and native task
@@ -252,7 +251,7 @@ After presenting the summary, call `TaskList` to display the final native task s
 
 This skill supports resuming interrupted executions:
 
-1. Re-invoke with the same plan path: `/swarm-executor <plan-path>`
+1. Re-invoke with the same plan path: `/swarm-skills:swarm-executor <plan-path>`
 2. The skill reads `.tasks.json` and native tasks to determine what's already done
 3. Picks up from the first pending wave
 4. No work is duplicated
@@ -260,8 +259,8 @@ This skill supports resuming interrupted executions:
 ## Example Usage
 
 ```
-/swarm-executor docs/plans/2026-02-25-auth-system-swarm.md
-/swarm-executor docs/plans/2026-02-25-auth-system-swarm.md T3 T5 T7
+/swarm-skills:swarm-executor docs/plans/2026-02-25-auth-system-swarm.md
+/swarm-skills:swarm-executor docs/plans/2026-02-25-auth-system-swarm.md T3 T5 T7
 ```
 
 ## Important Reminders

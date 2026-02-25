@@ -1,0 +1,19 @@
+{
+  "name": "swarm-skills-cc",
+  "owner": {
+    "name": "John Richardson",
+    "email": "hi@jkri.ch"
+  },
+  "metadata": {
+    "description": "Dependency-aware parallel planning and execution skills for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "swarm-skills",
+      "source": "./",
+      "description": "Dependency-aware parallel planning and execution for Claude Code. Create plans with /swarm-skills:swarm-planner, execute with /swarm-skills:swarm-executor.",
+      "version": "1.0.0",
+      "keywords": ["parallel", "swarm", "planner", "executor", "worktree", "multi-agent"]
+    }
+  ]
+}
