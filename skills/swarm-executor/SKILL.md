@@ -140,8 +140,8 @@ As each subagent returns:
       ```bash
       git merge <worktree-branch> --no-ff -m "swarm: merge T<id> - <task name>"
       ```
-   b. If merge conflict: STOP, alert the user, do NOT auto-resolve. Do NOT proceed to cleanup until conflict is resolved.
-   c. After successful merge, delete the worktree and branch immediately:
+   b. **If merge conflict:** follow the **Tiered Conflict Resolution** process below.
+   c. After successful merge (or successful conflict resolution), delete the worktree and branch immediately:
       ```bash
       git worktree remove <worktree-path> --force
       git branch -D <worktree-branch>
@@ -154,6 +154,70 @@ As each subagent returns:
 git worktree list
 ```
 If any stale worktrees remain from this wave, remove them immediately.
+
+#### Tiered Conflict Resolution
+
+When a merge produces conflicts, resolve them using escalating tiers. Log which tier was used for each file in the wave summary.
+
+**Tier 1 — Plan file conflicts:**
+If the only conflicting file is the plan file (`docs/plans/*.md`):
+1. Accept the incoming version: `git checkout --theirs <plan-file>`
+2. Re-apply the already-merged task's status updates using Edit (each task edits its own `### T<id>:` section, so these are non-overlapping)
+3. `git add <plan-file>` and continue the merge
+
+**Tier 2 — Additive conflicts:**
+If a conflict region consists entirely of additions from both sides (no lines deleted or modified relative to the base), combine both additions:
+1. Get the base version: `git show :1:<file> > /tmp/base`
+2. Check that both sides only add lines relative to base (no deletions or modifications)
+3. If purely additive: combine both sides' added lines, replace the conflict region, `git add <file>`
+4. If not purely additive: fall through to Tier 3
+
+This covers import blocks, barrel exports (`export * from`), and config arrays where both agents appended entries.
+
+**Tier 3 — Subagent resolver:**
+For code conflicts that aren't purely additive, spawn a resolver subagent:
+
+```
+Task(subagent_type="general-purpose", prompt="""
+You are resolving a merge conflict between two parallel tasks from a swarm plan.
+
+## Conflict
+File: <path>
+Base version (before either task):
+<output of: git show :1:<file>>
+
+Ours (already merged — task <ID>):
+<output of: git show :2:<file>>
+
+Theirs (incoming — task <ID>):
+<output of: git show :3:<file>>
+
+## Task Context
+**Task <ID> (ours):** <description + acceptance criteria from plan>
+**Task <ID> (theirs):** <description + acceptance criteria from plan>
+
+## Instructions
+1. Understand both tasks' intent from the context above
+2. Produce the complete merged file that preserves BOTH tasks' changes
+3. Do not drop functionality from either side
+4. If the changes are truly incompatible (same logic rewritten differently),
+   respond with only: CANNOT_RESOLVE: <reason>
+5. Otherwise, write the resolved file using the Write tool — nothing else
+""")
+```
+
+After the resolver returns:
+1. If CANNOT_RESOLVE: fall through to Tier 4
+2. Stage the resolved file: `git add <file>`
+3. Run validation commands from **both** conflicting tasks (if specified in the plan)
+4. If validation passes: accept the resolution, continue the merge
+5. If validation fails: restore conflict state with `git checkout --merge <file>`, fall through to Tier 4
+
+**Tier 4 — User escalation:**
+If all automated tiers fail:
+1. STOP and show the user: which file, which tasks, what was attempted, and why auto-resolution failed
+2. Let the user resolve manually
+3. Resume with `/swarm-skills:swarm-executor <plan-path>` (picks up from `.tasks.json`)
 
 ### Step 6: Validate and Update State
 
@@ -228,9 +292,11 @@ After presenting the summary, call `TaskList` to display the final native task s
 ## Error Handling
 
 ### Merge Conflicts
-- STOP immediately — do not auto-resolve
-- Show the conflict to the user
-- Let the user resolve, then resume with `/swarm-skills:swarm-executor <plan-path>` (resume picks up from `.tasks.json`)
+- Conflicts are resolved automatically using the **Tiered Conflict Resolution** process (see Step 5)
+- **Tier 1** (plan file) and **Tier 2** (additive) resolve without subagents
+- **Tier 3** spawns a resolver subagent for code conflicts, validated against both tasks' acceptance criteria
+- **Tier 4** escalates to the user only when automated resolution fails validation
+- On user escalation, resume with `/swarm-skills:swarm-executor <plan-path>` (picks up from `.tasks.json`)
 
 ### Subagent Failure
 - Mark task as `failed` in plan, JSON, and native task
@@ -268,7 +334,7 @@ This skill supports resuming interrupted executions:
 - ALL wave tasks dispatched in ONE message — this is how parallelism works
 - Worktree isolation is mandatory — every task gets `isolation: "worktree"`
 - Worktree cleanup is immediate — no worktree survives past its wave
-- Merge conflicts are user-escalated — never auto-resolve
+- Merge conflicts are auto-resolved in tiers — user escalation is the last resort, not the first
 - Plan file is the source of truth — always update it after each wave
 - `.tasks.json` enables resume — always keep it in sync
 - Never push — only commit. User decides when to push.
